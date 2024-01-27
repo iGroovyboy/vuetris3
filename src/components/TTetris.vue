@@ -38,21 +38,21 @@ export default {
   },
   data() {
     return {
-      speed: 500,
-      isOn: false,
-      isPause: false,
-      playBtnText: "Play",
-      pauseBtnText: "Pause",
-      resumeBtnText: "Resume",
-      stopBtnText: "Stop",
+      isOn: false, // ref
+      isPause: false, // ref
+
       timer: null,
       frame: 0,
-      isAnimation: false,
+      isAnimation: false, // ref
 
-      board: "",
+      speed: 500, // move to const
       sizeX: 10, // move to const
       sizeY: 20, // move to const
       topY: 0, // move to const
+      playBtnText: "Play", // move to const
+      pauseBtnText: "Pause", // move to const
+      resumeBtnText: "Resume", // move to const
+      stopBtnText: "Stop", // move to const
 
       currentBlock: null,
       currentBlockData: null,
@@ -61,12 +61,12 @@ export default {
       level: null,
       levelOfBlock: [],
 
-      renderData: [],
-      renderTxt: "",
-      status: "stop",
+      renderData: [], // ref
+      renderTxt: "", // ref
+      status: "stop", // ref
 
-      destroyed: 0,
-      score: 0,
+      destroyed: 0, // ref
+      score: 0, // ref
     };
   },
   created() {
@@ -117,7 +117,6 @@ export default {
         }
 
         this.runTick();
-        this.board = this.frame;
 
         this.frame++;
 
