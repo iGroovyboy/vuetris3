@@ -526,8 +526,8 @@ export default {
 }
 
 .zone {
-  width: 210px;
-  height: 400px;
+  min-width: 210px;
+  min-height: 400px;
   padding: 0;
 }
 
