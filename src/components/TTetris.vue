@@ -25,468 +25,396 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import TBoard from "./TBoard.vue";
-
 import * as fn from "@/util/lib.ts";
-import { SYMBOL, BLOCKS, STATUS, DIRECTION } from "@/util/constants.ts";
-
-export default {
-  name: "TTetris",
-  components: {
-    TBoard,
-  },
-  data() {
-    return {
-      isOn: false, // ref
-      isPause: false, // ref
-
-      timer: null,
-      frame: 0,
-      isAnimation: false, // ref
-
-      speed: 500, // move to const
-      sizeX: 10, // move to const
-      sizeY: 20, // move to const
-      topY: 0, // move to const
-      playBtnText: "Play", // move to const
-      pauseBtnText: "Pause", // move to const
-      resumeBtnText: "Resume", // move to const
-      stopBtnText: "Stop", // move to const
-
-      currentBlock: null,
-      currentBlockData: null,
-      allowRotation: true,
-
-      level: null,
-      levelOfBlock: [],
-
-      renderData: [], // ref
-      renderTxt: "", // ref
-      status: "stop", // ref
-
-      destroyed: 0, // ref
-      score: 0, // ref
-    };
-  },
-  created() {
-    console.clear();
-  },
-  mounted() {
-    document.addEventListener("keydown", this.userKeyDown);
-  },
-  unmounted() {
-    document.removeEventListener("keydown", this.userKeyDown);
-  },
-  methods: {
-    play(resume = false) {
-      this.isOn = true;
-
-      //if (this.isOn === false){
-      //  clearInterval(this.timer);
-      //  this.frame = 0;
-      //  console.log('Game stopped');
-      //  return;
-      //}
-
-      if (!resume && this.isPause === true) {
-        clearInterval(this.timer);
-        console.log("Game paused");
-        return;
-      }
-
-      if (resume) {
-        this.isPause = false;
-      }
-
-      this.status = STATUS.Play;
-
-      console.log("Game is on!");
-
-      this.timer = setInterval(() => {
-        if (this.frame === 0) {
-          this.level = fn.createEmptyLevel(this.sizeX, this.sizeY, this.topY);
-          this.levelOfBlock = fn.createEmptyLevel(
-            this.sizeX,
-            this.sizeY,
-            this.topY,
-          );
-
-          this.destroyed = 0;
-          this.score = 0;
-        }
-
-        this.runTick();
-
-        this.frame++;
-
-        if (this.isOn === false) {
-          clearInterval(this.timer);
-        }
-      }, this.speed);
-    },
-
-    // kills interval, etc.
-    pauseGame() {
-      this.isPause = true;
-      clearInterval(this.timer);
-      this.status = STATUS.Pause;
-      console.log("GAME PAUSED", this.isPause, this.isOn); // todo: add html
-    },
-
-    // kills interval, etc.
-    stopGame() {
-      this.status = STATUS.Stop;
-
-      clearInterval(this.timer);
-      this.timer = null;
-
-      this.isOn = false;
-      this.frame = 0;
-      this.speed = 500;
-
-      this.level = fn.createEmptyLevel(this.sizeX, this.sizeY, this.topY);
-      this.levelOfBlock = [];
-      this.currentBlock = null;
-      this.currentBlockData = null;
-      // this.renderView();
-
-      console.log("Game Stoped"); // todo: add html
-    },
-
-    renderView() {
-      let levelTxt = "",
-        levelArray = [];
-
-      for (let Y = this.topY; Y <= this.sizeY; Y++) {
-        levelArray[Y] = [];
-        for (let X = 0; X <= this.sizeX + 1; X++) {
-          if (!this.level[Y]) {
-            continue;
-          }
-          if (this.levelOfBlock[Y] === undefined) {
-            continue;
-          }
-
-          let cellView = this.level[Y][X];
-          // draw level cell
-
-          // draw current block
-          if (
-            this.levelOfBlock[Y] !== null &&
-            this.levelOfBlock[Y][X] === SYMBOL.blockMapFull
-          ) {
-            cellView = SYMBOL.block;
-          }
-
-          levelTxt += cellView;
-          levelArray[Y].push(cellView);
-
-          if (X == this.sizeX + 1) {
-            levelTxt += "\n";
-          }
-        }
-      }
-      this.renderTxt = levelTxt;
-
-      let emptyRow = new Array(this.sizeX + 2);
-      emptyRow = emptyRow.fill(SYMBOL.borderY);
-
-      levelArray.unshift(emptyRow);
-      this.renderData = levelArray.filter((el) => el != null);
-
-      //console.clear();
-      //console.log(levelTxt);
-    },
-
-    runTick() {
-      if (!this.currentBlock) {
-        const randomBlock = fn.pickRandomBlock(BLOCKS);
-
-        this.levelOfBlock = fn.createEmptyLevel(
-          this.sizeX,
-          this.sizeY,
-          this.topY,
-        );
-        this.levelOfBlock = fn.addNewBlockToLOB(
-          randomBlock.data,
-          this.levelOfBlock,
-          this.sizeX,
-          this.topY,
-        );
-
-        this.currentBlock = randomBlock.name;
-        this.currentBlockData = randomBlock.data;
-
-        this.status = STATUS.NewBlock;
-
-        //console.log('New Block of type: ' + randomBlock.name, randomBlock.data)
-
-        if (
-          fn.hasOverlaps(
-            this.level,
-            this.levelOfBlock,
-            this.sizeY,
-            this.sizeX,
-            this.topY,
-          )
-        ) {
-          //gameover coz we have overlaps on top
-          this.stopGame();
-        }
-      }
-
-      if (this.moveCurrentBlockDown()) {
-        this.renderView();
-      }
-
-      this.maybeDestroyLines();
-
-      return true;
-    },
-
-    moveCurrentBlockDown() {
-      if (!this.currentBlock) {
-        return false;
-      }
-
-      this.allowRotation = false;
-
-      // shift data one row down on levelOfBlock
-      let emptyRow = new Array(this.sizeX + 2);
-      emptyRow = emptyRow
-        .fill(SYMBOL.borderY)
-        .fill(SYMBOL.empty, 1, this.sizeX + 1);
-
-      let levelOfBlockShifted = JSON.parse(JSON.stringify(this.levelOfBlock)); //[...this.levelOfBlock];
-      levelOfBlockShifted.pop();
-      levelOfBlockShifted.unshift(emptyRow);
-      levelOfBlockShifted = levelOfBlockShifted.filter((el) => el != null);
-
-      if (
-        fn.hasOverlaps(
-          this.level,
-          levelOfBlockShifted,
-          this.sizeY,
-          this.sizeX,
-          this.topY,
-        )
-      ) {
-        this.level = fn.transferBlockToLevel(
-          this.level,
-          this.levelOfBlock,
-          this.sizeY,
-          this.sizeX,
-          this.topY,
-        );
-
-        // clear currentBlock, levelOfBlock
-        this.currentBlock = null;
-        this.levelOfBlock = [];
-
-        this.status = STATUS.Collision;
-
-        return false;
-      }
-
-      this.levelOfBlock = levelOfBlockShifted;
-
-      this.allowRotation = true;
-
-      return true;
-    },
-
-    // check lines, destroy them, animate
-    maybeDestroyLines() {
-      const linesToDestroy = fn.getFullLines(this.level, this.sizeY, this.topY);
-
-      if (!linesToDestroy.length || this.isAnimation === true) {
-        return false;
-      }
-
-      console.log(
-        "Lines to be removed: " + linesToDestroy.length,
-        linesToDestroy,
-        this.level,
-      );
-
-      this.isAnimation = true;
-
-      this.level = fn.removeLineFromLevel(
-        this.level,
-        linesToDestroy,
-        this.sizeY,
-        this.sizeX,
-      );
-
-      this.isAnimation = false;
-
-      //console.log('AFTER DESTROY ', this.level);
-      this.destroyed += linesToDestroy.length;
-
-      this.score += this.calcScore(linesToDestroy.length);
-      this.status = STATUS.Score;
-
-      return true;
-    },
-
-    calcScore(lines) {
-      const scoreMap = {
-        1: 100,
-        2: 300,
-        3: 500,
-        4: 1000,
-        5: 2000,
-      };
-
-      return scoreMap[lines];
-    },
-
-    // user
-    // left/-1 right/1 null/0
-    moveBlock(direction) {
-      let levelOfBlockMOVE = [...this.levelOfBlock];
-
-      // shift data
-      // get edges of level to see if there are block cells
-      const edge = fn.getLevelBordersData(
-        this.levelOfBlock,
-        this.sizeY,
-        this.sizeX,
-        this.topY,
-      );
-
-      // if block cells are on the edge - dont move block
-      if ("left" === direction && edge["left"].includes(SYMBOL.blockMapFull)) {
-        return false;
-      } else if (
-        "right" === direction &&
-        edge["right"].includes(SYMBOL.blockMapFull)
-      ) {
-        return false;
-      }
-
-      for (let y = this.topY; y < this.sizeY; y++) {
-        levelOfBlockMOVE[y] = fn.arrShift(
-          levelOfBlockMOVE[y],
-          direction,
-          this.sizeX,
-        );
-      }
-
-      // checkCollision
-      if (
-        fn.hasOverlaps(
-          this.level,
-          levelOfBlockMOVE,
-          this.sizeY,
-          this.sizeX,
-          this.topY,
-        )
-      ) {
-        return false;
-      }
-
-      // update levelOfBlock if possible
-      this.levelOfBlock = levelOfBlockMOVE;
-
-      return true;
-    },
-
-    // user
-    rotateBlock(blockData, direction = "left") {
-      // TODO: add direction?
-      if (blockData === undefined) {
-        return false;
-      }
-
-      const rotatedBlock = fn.rotateMatrixLeft(blockData);
-
-      //find lowest and leftest point in levelOfBlock - use is as y coord
-      const h = rotatedBlock.length,
-        w = rotatedBlock[0].length;
-
-      let lowestY = 0,
-        lowestX = this.sizeX - 1 - w;
-
-      ({ lowestX, lowestY } = fn.getCurrentBlockPos(
-        this.currentBlock,
-        this.levelOfBlock,
-        lowestY,
-        lowestX,
-        this.sizeY,
-        this.sizeX,
-        this.topY,
-      ));
-
-      if (lowestY <= h) {
-        console.log(`Can't rotate - no available space`);
-        return false;
-      }
-
-      this.currentBlockData = rotatedBlock;
-
-      //clear levelOfBlock
-      this.levelOfBlock = fn.createEmptyLevel(
-        this.sizeX,
-        this.sizeY,
-        this.topY,
-      );
-
-      //paste at y coord torated src block using block height
-      const y1Pos = lowestY - h;
-      const y2Pos = lowestY - 1;
-
-      const x1Pos = lowestX;
-      const x2Pos = lowestX - 1 + w;
-
-      for (let y = y1Pos; y <= y2Pos; y++) {
-        for (let x = x1Pos; x <= x2Pos; x++) {
-          this.levelOfBlock[y][x] = rotatedBlock[y - y1Pos][x - x1Pos];
-        }
-      }
-
-      return true;
-    },
-
-    userKeyDown(e) {
-      // console.log(e)
-      if (this.level === null || this.levelOfBlock === null) {
-        return;
-      }
-
-      let r = false;
-
-      if (e.code === "ArrowRight") {
-        r = this.moveBlock(DIRECTION.Right);
-        if (r) this.renderView();
-      } else if (e.code === "ArrowLeft") {
-        r = this.moveBlock(DIRECTION.Left);
-        if (r) this.renderView();
-      } else if (e.code === "ArrowUp" && this.allowRotation) {
-        // e.code === 'Space'
-        r = this.rotateBlock(
-          this.currentBlockData || BLOCKS[this.currentBlock],
-        );
-        if (r) this.renderView();
-        // TODO: 1 bug - when rotating too often block gets up
-        // TODO: 2 bug - extra line blinks below horiz border
-      } else if (e.code === "ArrowDown") {
-        for (let times = 1; times <= 3; times++) {
-          // TODO: maybe optimize
-          r = this.moveCurrentBlockDown();
-          if (r) this.renderView();
-        }
-      } else if (e.code === "Space") {
-        for (let times = 1; times <= this.sizeY; times++) {
-          // TODO: maybe optimize
-          r = this.moveCurrentBlockDown();
-          if (r) this.renderView();
-        }
-      }
-    },
-  },
+import {
+  SYMBOL,
+  BLOCKS,
+  STATUS,
+  DIRECTION,
+  SCORE_MAP,
+  TBlock,
+  BLOCKS_NAMES,
+} from "@/util/constants.ts";
+import { onMounted, onUnmounted, ref } from "vue";
+import { TLevel } from "@/util/interfaces.ts";
+import { clone } from "@/util/helpers.ts";
+
+const speed = 500;
+const sizeX = 10;
+const sizeY = 20;
+const topY = 0;
+const playBtnText = "Play";
+const pauseBtnText = "Pause";
+const resumeBtnText = "Resume";
+const stopBtnText = "Stop";
+
+const isOn = ref(false);
+const isPause = ref(false);
+
+const renderData = ref<TLevel>([]);
+const renderTxt = ref<TLevel>("");
+const status = ref<STATUS>("stop");
+
+const destroyed = ref(0);
+const score = ref(0);
+
+const isAnimation = ref(false);
+
+let timer: number | null = null;
+let frame: number = 0;
+let currentBlock: BLOCKS_NAMES | null = null;
+let currentBlockData: TBlock | null = null;
+let allowRotation = true;
+let level: TLevel = null;
+let levelOfBlock: TLevel = [];
+
+const play = (resume = false) => {
+  isOn.value = true;
+
+  //if (isOn === false){
+  //  clearInterval(timer);
+  //  frame = 0;
+  //  console.log('Game stopped');
+  //  return;
+  //}
+
+  if (!resume && isPause.value === true) {
+    clearInterval(timer);
+    console.log("Game paused");
+    return;
+  }
+
+  if (resume) {
+    isPause.value = false;
+  }
+
+  status.value = STATUS.Play;
+
+  console.log("Game is on!");
+
+  timer = setInterval(() => {
+    if (frame === 0) {
+      level = fn.createEmptyLevel(sizeX, sizeY, topY);
+      levelOfBlock = fn.createEmptyLevel(sizeX, sizeY, topY);
+
+      destroyed.value = 0;
+      score.value = 0;
+    }
+
+    runTick();
+
+    frame++;
+
+    if (isOn.value === false) {
+      clearInterval(timer);
+    }
+  }, speed);
 };
+
+// kills interval, etc.
+const pauseGame = () => {
+  isPause.value = true;
+  clearInterval(timer);
+  status.value = STATUS.Pause;
+  console.log("GAME PAUSED", isPause.value, isOn.value); // todo: add html
+};
+
+// kills interval, etc.
+const stopGame = () => {
+  status.value = STATUS.Stop;
+
+  clearInterval(timer);
+  timer = null;
+
+  isOn.value = false;
+  frame = 0;
+
+  level = fn.createEmptyLevel(sizeX, sizeY, topY);
+  levelOfBlock = [];
+  currentBlock = null;
+  currentBlockData = null;
+  // renderView();
+
+  console.log("Game Stoped"); // todo: add html
+};
+
+const renderView = () => {
+  let levelTxt = "",
+    levelArray = [];
+
+  for (let Y = topY; Y <= sizeY; Y++) {
+    levelArray[Y] = [];
+    for (let X = 0; X <= sizeX + 1; X++) {
+      if (!level[Y]) {
+        continue;
+      }
+      if (levelOfBlock[Y] === undefined) {
+        continue;
+      }
+
+      let cellView = level[Y][X];
+      // draw level cell
+
+      // draw current block
+      if (
+        levelOfBlock[Y] !== null &&
+        levelOfBlock[Y][X] === SYMBOL.blockMapFull
+      ) {
+        cellView = SYMBOL.block;
+      }
+
+      levelTxt += cellView;
+      levelArray[Y].push(cellView);
+
+      if (X == sizeX + 1) {
+        levelTxt += "\n";
+      }
+    }
+  }
+  renderTxt.value = levelTxt;
+
+  let emptyRow = new Array(sizeX + 2);
+  emptyRow = emptyRow.fill(SYMBOL.borderY);
+
+  levelArray.unshift(emptyRow);
+  renderData.value = levelArray.filter((el) => el != null);
+
+  //console.clear();
+  //console.log(levelTxt);
+};
+
+const runTick = () => {
+  if (!currentBlock) {
+    const randomBlock = fn.pickRandomBlock(BLOCKS);
+
+    levelOfBlock = fn.createEmptyLevel(sizeX, sizeY, topY);
+    levelOfBlock = fn.addNewBlockToLOB(
+      randomBlock.data,
+      levelOfBlock,
+      sizeX,
+      topY,
+    );
+
+    currentBlock = randomBlock.name;
+    currentBlockData = randomBlock.data;
+
+    status.value = STATUS.NewBlock;
+
+    //console.log('New Block of type: ' + randomBlock.name, randomBlock.data)
+
+    if (fn.hasOverlaps(level, levelOfBlock, sizeY, sizeX, topY)) {
+      //gameover coz we have overlaps on top
+      stopGame();
+    }
+  }
+
+  if (moveCurrentBlockDown()) {
+    renderView();
+  }
+
+  maybeDestroyLines();
+
+  return true;
+};
+
+const moveCurrentBlockDown = () => {
+  if (!currentBlock) {
+    return false;
+  }
+
+  allowRotation = false;
+
+  // shift data one row down on levelOfBlock
+  let emptyRow = new Array(sizeX + 2);
+  emptyRow = emptyRow.fill(SYMBOL.borderY).fill(SYMBOL.empty, 1, sizeX + 1);
+
+  let levelOfBlockShifted = clone(levelOfBlock); //[...levelOfBlock];
+  levelOfBlockShifted.pop();
+  levelOfBlockShifted.unshift(emptyRow);
+  levelOfBlockShifted = levelOfBlockShifted.filter((el) => el != null);
+
+  if (fn.hasOverlaps(level, levelOfBlockShifted, sizeY, sizeX, topY)) {
+    level = fn.transferBlockToLevel(level, levelOfBlock, sizeY, sizeX, topY);
+
+    // clear currentBlock, levelOfBlock
+    currentBlock = null;
+    levelOfBlock = [];
+
+    status.value = STATUS.Collision;
+
+    return false;
+  }
+
+  levelOfBlock = levelOfBlockShifted;
+
+  allowRotation = true;
+
+  return true;
+};
+
+// check lines, destroy them, animate
+const maybeDestroyLines = () => {
+  const linesToDestroy = fn.getFullLines(level, sizeY, topY);
+
+  if (!linesToDestroy.length || isAnimation.value === true) {
+    return false;
+  }
+
+  console.log(
+    "Lines to be removed: " + linesToDestroy.length,
+    linesToDestroy,
+    level,
+  );
+
+  isAnimation.value = true;
+
+  level = fn.removeLineFromLevel(level, linesToDestroy, sizeY, sizeX);
+
+  isAnimation.value = false;
+
+  //console.log('AFTER DESTROY ', level);
+  destroyed.value += linesToDestroy.length;
+
+  score.value += calcScore(linesToDestroy.length);
+  status.value = STATUS.Score;
+
+  return true;
+};
+
+const calcScore = (lines: number) => SCORE_MAP[lines];
+
+// user
+// left/-1 right/1 null/0
+const moveBlock = (direction: DIRECTION) => {
+  let levelOfBlockMOVE = [...levelOfBlock];
+
+  // shift data
+  // get edges of level to see if there are block cells
+  const edge = fn.getLevelBordersData(levelOfBlock, sizeY, sizeX, topY);
+
+  // if block cells are on the edge - dont move block
+  if (DIRECTION.Left === direction && edge.left.includes(SYMBOL.blockMapFull)) {
+    return false;
+  } else if (
+    DIRECTION.Right === direction &&
+    edge.right.includes(SYMBOL.blockMapFull)
+  ) {
+    return false;
+  }
+
+  for (let y = topY; y < sizeY; y++) {
+    levelOfBlockMOVE[y] = fn.arrShift(levelOfBlockMOVE[y], direction, sizeX);
+  }
+
+  // checkCollision
+  if (fn.hasOverlaps(level, levelOfBlockMOVE, sizeY, sizeX, topY)) {
+    return false;
+  }
+
+  // update levelOfBlock if possible
+  levelOfBlock = levelOfBlockMOVE;
+
+  return true;
+};
+
+// user
+const rotateBlock = (blockData: TBlock) => {
+  // TODO: add direction?
+  if (blockData === undefined) {
+    return false;
+  }
+
+  const rotatedBlock = fn.rotateMatrixLeft(blockData);
+
+  //find lowest and leftest point in levelOfBlock - use is as y coord
+  const h = rotatedBlock.length,
+    w = rotatedBlock[0].length;
+
+  let lowestY = 0,
+    lowestX = sizeX - 1 - w;
+
+  ({ lowestX, lowestY } = fn.getCurrentBlockPos(
+    currentBlock,
+    levelOfBlock,
+    lowestY,
+    lowestX,
+    sizeY,
+    sizeX,
+    topY,
+  ));
+
+  if (lowestY <= h) {
+    console.log(`Can't rotate - no available space`);
+    return false;
+  }
+
+  currentBlockData = rotatedBlock;
+
+  //clear levelOfBlock
+  levelOfBlock = fn.createEmptyLevel(sizeX, sizeY, topY);
+
+  //paste at y coord torated src block using block height
+  const y1Pos = lowestY - h;
+  const y2Pos = lowestY - 1;
+
+  const x1Pos = lowestX;
+  const x2Pos = lowestX - 1 + w;
+
+  for (let y = y1Pos; y <= y2Pos; y++) {
+    for (let x = x1Pos; x <= x2Pos; x++) {
+      levelOfBlock[y][x] = rotatedBlock[y - y1Pos][x - x1Pos];
+    }
+  }
+
+  return true;
+};
+
+const userKeyDown = (e) => {
+  // console.log(e)
+  if (level === null || levelOfBlock === null) {
+    return;
+  }
+
+  let r = false;
+
+  if (e.code === "ArrowRight") {
+    r = moveBlock(DIRECTION.Right);
+    if (r) renderView();
+  } else if (e.code === "ArrowLeft") {
+    r = moveBlock(DIRECTION.Left);
+    if (r) renderView();
+  } else if (e.code === "ArrowUp" && allowRotation) {
+    // e.code === 'Space'
+    r = rotateBlock(currentBlockData || BLOCKS[currentBlock]);
+    if (r) renderView();
+    // TODO: 1 bug - when rotating too often block gets up
+    // TODO: 2 bug - extra line blinks below horiz border
+  } else if (e.code === "ArrowDown") {
+    for (let times = 1; times <= 3; times++) {
+      // TODO: maybe optimize
+      r = moveCurrentBlockDown();
+      if (r) renderView();
+    }
+  } else if (e.code === "Space") {
+    for (let times = 1; times <= sizeY; times++) {
+      // TODO: maybe optimize
+      r = moveCurrentBlockDown();
+      if (r) renderView();
+    }
+  }
+};
+
+onMounted(() => {
+  console.log("mounted");
+  console.clear();
+  document.addEventListener("keydown", userKeyDown);
+});
+
+onUnmounted(() => {
+  document.removeEventListener("keydown", userKeyDown);
+});
 </script>
 
 <style scoped>

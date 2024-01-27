@@ -69,3 +69,11 @@ export const BLOCKS: TBlocks = {
     [1, 1],
   ],
 };
+
+export const SCORE_MAP = {
+  1: 100,
+  2: 300,
+  3: 500,
+  4: 1000,
+  5: 2000,
+};
