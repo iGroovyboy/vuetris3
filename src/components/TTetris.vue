@@ -1,11 +1,11 @@
 <template>
   <div>
-    <h1>TETRIS</h1>
+    <h1>VUETRIS</h1>
     <div>
       <span class="score">Score: {{ score }}</span>
     </div>
     <div class="zone">
-      <TBoard v-bind:renderData="renderData" ref="board" />
+      <TBoard :renderData="renderData" :status="status" ref="board" />
     </div>
 
     <button class="btn" v-show="!isOn || (!isOn && !isPause)" @click="main()">{{ playBtnText }}</button>
@@ -19,8 +19,7 @@
 import TBoard from './TBoard.vue'
 
 import * as fn from '@/util/lib.ts';
-import { STR, SYMBOL } from '@/util/strings.ts';
-import { BLOCKS } from '@/util/blocks.ts';
+import { STR, SYMBOL, BLOCKS, STATUS } from '@/util/constants.ts';
 
 export default {
   name: 'TTetris',
@@ -57,6 +56,7 @@ export default {
 
       renderData: [],
       renderTxt: '',
+      status: 'stop',
 
       destroyed: 0,
       score: 0,
@@ -93,7 +93,7 @@ export default {
         this.isPause = false;
       }
 
-      this.$refs.board.gamePlayEvent();
+      this.status = STATUS.Play;
 
       console.log('Game is on!');
 
@@ -122,13 +122,13 @@ export default {
     pauseGame() {
       this.isPause = true;
       clearInterval(this.timer);
-      this.$refs.board.gamePauseEvent();
+      this.status = STATUS.Pause;
       console.log('GAME PAUSED', this.isPause, this.isOn); // todo: add html
     },
 
     // kills interval, etc.
     stopGame() {
-      this.$refs.board.gameStopEvent();
+      this.status = STATUS.Stop;
 
       clearInterval(this.timer);
       this.timer = null;
@@ -201,7 +201,7 @@ export default {
         this.currentBlock = randomBlock.name
         this.currentBlockData = randomBlock.data
 
-        this.$refs.board.newBlockEvent();
+        this.status = STATUS.NewBlock;
 
         //console.log('New Block of type: ' + randomBlock.name, randomBlock.data)
 
@@ -243,7 +243,7 @@ export default {
         this.currentBlock = null;
         this.levelOfBlock = [];
 
-        this.$refs.board.collisionEvent();
+        this.status = STATUS.Collision;
 
         return false;
       }
@@ -275,7 +275,7 @@ export default {
       this.destroyed += linesToDestroy.length;
 
       this.score += this.calcScore(linesToDestroy.length)
-      this.$refs.board.scoreEvent();
+      this.status = STATUS.Score;
 
       return true;
     },
