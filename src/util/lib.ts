@@ -99,7 +99,7 @@ export function getLevelBordersData(
   for (let y = topY; y < sizeY; y++) {
     if (levelOfBlock[y] !== undefined) {
       edge.left.push(levelOfBlock[y][1]);
-      edge.left.push(levelOfBlock[y][sizeX]);
+      edge.right.push(levelOfBlock[y][sizeX]);
     }
   }
 
