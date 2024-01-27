@@ -83,7 +83,7 @@ const randomColor = () =>
 
 .row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   flex-direction: row;
 }
 
