@@ -15,8 +15,8 @@
 </template>
 
 <script setup lang="ts">
-import { STATUS, SYMBOL } from "@/util/constants.ts";
 import { ref, watch } from "vue";
+import { STATUS, SYMBOL } from "@/util/constants.ts";
 import { TCell, TLevel } from "@/util/interfaces.ts";
 
 interface TBoardProps {
