@@ -30,9 +30,10 @@ const props = withDefaults(defineProps<TBoardProps>(), {
 });
 
 let blockColor = "green";
+
 const statusClass = ref(STATUS.Stop);
 
-const cellClass = (cell: TCell) => {
+const cellClass = (cell: TCell): Record<string, boolean> => {
   return {
     empty: cell === SYMBOL.empty,
     borderY: cell === SYMBOL.borderY,
@@ -42,9 +43,9 @@ const cellClass = (cell: TCell) => {
   };
 };
 
-const cellColor = (cell: TCell) => {
+const cellColor = (cell: TCell): Record<string, string> => {
   if (props.status === STATUS.Stop) {
-    return { backgroundColor: cell === randomColor() };
+    return { backgroundColor: randomColor() };
   }
 
   return { backgroundColor: cell === SYMBOL.block ? blockColor : "" };

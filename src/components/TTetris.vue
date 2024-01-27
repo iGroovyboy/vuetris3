@@ -9,10 +9,10 @@
     </div>
 
     <div class="buttons">
-      <button class="btn" v-show="!isOn || (!isOn && !isPause)" @click="main()">
+      <button class="btn" v-show="!isOn || (!isOn && !isPause)" @click="play()">
         {{ playBtnText }}
       </button>
-      <button class="btn" v-show="isOn && isPause" @click="main(true)">
+      <button class="btn" v-show="isOn && isPause" @click="play(true)">
         {{ resumeBtnText }}
       </button>
       <button class="btn" v-show="isOn && !isPause" @click="pauseGame()">
@@ -29,13 +29,10 @@
 import TBoard from "./TBoard.vue";
 
 import * as fn from "@/util/lib.ts";
-import { STR, SYMBOL, BLOCKS, STATUS } from "@/util/constants.ts";
+import { SYMBOL, BLOCKS, STATUS, DIRECTION } from "@/util/constants.ts";
 
 export default {
   name: "TTetris",
-  props: {
-    msg: String,
-  },
   components: {
     TBoard,
   },
@@ -53,9 +50,9 @@ export default {
       isAnimation: false,
 
       board: "",
-      sizeX: 10,
-      sizeY: 20,
-      topY: 0,
+      sizeX: 10, // move to const
+      sizeY: 20, // move to const
+      topY: 0, // move to const
 
       currentBlock: null,
       currentBlockData: null,
@@ -82,7 +79,7 @@ export default {
     document.removeEventListener("keydown", this.userKeyDown);
   },
   methods: {
-    main(resume = false) {
+    play(resume = false) {
       this.isOn = true;
 
       //if (this.isOn === false){
@@ -108,17 +105,11 @@ export default {
 
       this.timer = setInterval(() => {
         if (this.frame === 0) {
-          this.level = fn.createEmptyLevel(
-            this.sizeX,
-            this.sizeY,
-            this.topY,
-            SYMBOL,
-          );
+          this.level = fn.createEmptyLevel(this.sizeX, this.sizeY, this.topY);
           this.levelOfBlock = fn.createEmptyLevel(
             this.sizeX,
             this.sizeY,
             this.topY,
-            SYMBOL,
           );
 
           this.destroyed = 0;
@@ -155,12 +146,7 @@ export default {
       this.frame = 0;
       this.speed = 500;
 
-      this.level = fn.createEmptyLevel(
-        this.sizeX,
-        this.sizeY,
-        this.topY,
-        SYMBOL,
-      );
+      this.level = fn.createEmptyLevel(this.sizeX, this.sizeY, this.topY);
       this.levelOfBlock = [];
       this.currentBlock = null;
       this.currentBlockData = null;
@@ -222,7 +208,6 @@ export default {
           this.sizeX,
           this.sizeY,
           this.topY,
-          SYMBOL,
         );
         this.levelOfBlock = fn.addNewBlockToLOB(
           randomBlock.data,
@@ -242,7 +227,6 @@ export default {
           fn.hasOverlaps(
             this.level,
             this.levelOfBlock,
-            SYMBOL,
             this.sizeY,
             this.sizeX,
             this.topY,
@@ -284,7 +268,6 @@ export default {
         fn.hasOverlaps(
           this.level,
           levelOfBlockShifted,
-          SYMBOL,
           this.sizeY,
           this.sizeX,
           this.topY,
@@ -293,7 +276,6 @@ export default {
         this.level = fn.transferBlockToLevel(
           this.level,
           this.levelOfBlock,
-          SYMBOL,
           this.sizeY,
           this.sizeX,
           this.topY,
@@ -317,13 +299,7 @@ export default {
 
     // check lines, destroy them, animate
     maybeDestroyLines() {
-      const linesToDestroy = fn.getFullLines(
-        this.level,
-        SYMBOL,
-        this.sizeY,
-        this.sizeX,
-        this.topY,
-      );
+      const linesToDestroy = fn.getFullLines(this.level, this.sizeY, this.topY);
 
       if (!linesToDestroy.length || this.isAnimation === true) {
         return false;
@@ -339,11 +315,9 @@ export default {
 
       this.level = fn.removeLineFromLevel(
         this.level,
-        SYMBOL,
         linesToDestroy,
         this.sizeY,
         this.sizeX,
-        this.topY,
       );
 
       this.isAnimation = false;
@@ -369,6 +343,7 @@ export default {
       return scoreMap[lines];
     },
 
+    // user
     // left/-1 right/1 null/0
     moveBlock(direction) {
       let levelOfBlockMOVE = [...this.levelOfBlock];
@@ -396,7 +371,6 @@ export default {
         levelOfBlockMOVE[y] = fn.arrShift(
           levelOfBlockMOVE[y],
           direction,
-          SYMBOL,
           this.sizeX,
         );
       }
@@ -406,7 +380,6 @@ export default {
         fn.hasOverlaps(
           this.level,
           levelOfBlockMOVE,
-          SYMBOL,
           this.sizeY,
           this.sizeX,
           this.topY,
@@ -421,6 +394,7 @@ export default {
       return true;
     },
 
+    // user
     rotateBlock(blockData, direction = "left") {
       // TODO: add direction?
       if (blockData === undefined) {
@@ -441,7 +415,6 @@ export default {
         this.levelOfBlock,
         lowestY,
         lowestX,
-        SYMBOL,
         this.sizeY,
         this.sizeX,
         this.topY,
@@ -459,7 +432,6 @@ export default {
         this.sizeX,
         this.sizeY,
         this.topY,
-        SYMBOL,
       );
 
       //paste at y coord torated src block using block height
@@ -487,10 +459,10 @@ export default {
       let r = false;
 
       if (e.code === "ArrowRight") {
-        r = this.moveBlock("right");
+        r = this.moveBlock(DIRECTION.Right);
         if (r) this.renderView();
       } else if (e.code === "ArrowLeft") {
-        r = this.moveBlock("left");
+        r = this.moveBlock(DIRECTION.Left);
         if (r) this.renderView();
       } else if (e.code === "ArrowUp" && this.allowRotation) {
         // e.code === 'Space'

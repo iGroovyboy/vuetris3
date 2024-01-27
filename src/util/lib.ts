@@ -1,9 +1,11 @@
-"use strict";
+import { DIRECTION, SYMBOL, TBlock, TBlocks } from "./constants.ts";
+import { TCell, TLevel, TRow } from "./interfaces.ts";
+import { clone } from "./helpers.ts";
 
 //TODO: refac - remove topY and replace with 1 or 0
 
-export function createEmptyLevel(X, Y, topY, SYMBOL) {
-  let l = [];
+export function createEmptyLevel(X: number, Y: number, topY: number): TLevel {
+  const l: TLevel = [];
   for (let y = topY; y <= Y; y++) {
     l[y] = [];
     for (let x = 0; x <= X + 1; x++) {
@@ -22,26 +24,31 @@ export function createEmptyLevel(X, Y, topY, SYMBOL) {
 }
 
 export function transferBlockToLevel(
-  level,
-  levelOfBlock,
-  SYMBOL,
-  sizeY,
-  sizeX,
-  topY
-) {
+  level: TLevel,
+  levelOfBlock: TLevel,
+  sizeY: number,
+  sizeX: number,
+  topY: number,
+): TLevel {
   // intersect arrays of level with levelOfBlock, save to level
+  const l = clone(level);
   for (let y = topY; y < sizeY; y++) {
     for (let x = 1; x <= sizeX; x++) {
       if (levelOfBlock[y] && levelOfBlock[y][x] === SYMBOL.blockMapFull) {
-        level[y][x] = SYMBOL.full;
+        l[y][x] = SYMBOL.full;
       }
     }
   }
 
-  return level;
+  return l;
 }
 
-export function pickRandomBlock(blocks) {
+export type TRandomBlockData = {
+  name: string;
+  data: TBlock;
+};
+
+export function pickRandomBlock(blocks: TBlocks): TRandomBlockData {
   const blocksArray = Object.entries(blocks);
   const id = Math.floor(Math.random() * blocksArray.length);
   const randomBlock = blocksArray[id];
@@ -50,33 +57,49 @@ export function pickRandomBlock(blocks) {
   return { name: randomBlock[0], data: randomBlock[1] };
 }
 
-export function addNewBlockToLOB(blockData, levelOfBlock, sizeX, topY) {
+export function addNewBlockToLOB(
+  blockData: TBlock,
+  levelOfBlock: TLevel,
+  sizeX: number,
+  topY: number,
+): TLevel {
+  const l = clone(levelOfBlock);
   const block = blockData;
   const centerX = Math.round(sizeX / 2);
-  const blockHeight = block.length;
-  const blockWidth = block[0].length;
+  const blockHeight = block?.length;
+  const blockWidth = block[0]?.length;
 
   for (let y = topY; y <= blockHeight; y++) {
     for (let x = 0; x <= blockWidth; x++) {
       if (block[y - topY] !== undefined || block[y - topY] !== undefined) {
-        levelOfBlock[y][centerX + x] = block[y - topY][x];
+        l[y][centerX + x] = block[y - topY][x];
       }
     }
   }
 
-  return levelOfBlock;
+  return l;
 }
 
-export function getLevelBordersData(levelOfBlock, sizeY, sizeX, topY) {
-  let edge = [];
+export type TLevelBordersData = {
+  left: TCell[];
+  right: TCell[];
+};
 
-  edge["left"] = [];
-  edge["right"] = [];
+export function getLevelBordersData(
+  levelOfBlock: TLevel,
+  sizeY: number,
+  sizeX: number,
+  topY: number,
+): TLevelBordersData {
+  const edge: TLevelBordersData = {
+    left: [],
+    right: [],
+  };
 
   for (let y = topY; y < sizeY; y++) {
     if (levelOfBlock[y] !== undefined) {
-      edge["left"].push(levelOfBlock[y][1]);
-      edge["right"].push(levelOfBlock[y][sizeX]);
+      edge.left.push(levelOfBlock[y][1]);
+      edge.left.push(levelOfBlock[y][sizeX]);
     }
   }
 
@@ -84,7 +107,13 @@ export function getLevelBordersData(levelOfBlock, sizeY, sizeX, topY) {
 }
 
 //dont use vertical borders in calculations: start from 1 on X
-export function hasOverlaps(level, levelOfBlock, SYMBOL, sizeY, sizeX, topY) {
+export function hasOverlaps(
+  level: TLevel,
+  levelOfBlock: TLevel,
+  sizeY: number,
+  sizeX: number,
+  topY: number,
+): boolean {
   if (!level || !levelOfBlock) {
     return true;
   }
@@ -117,7 +146,7 @@ export function hasOverlaps(level, levelOfBlock, SYMBOL, sizeY, sizeX, topY) {
       // }
 
       if (level[y][x] === SYMBOL.borderY && currentBlockHere) {
-        console.log("|");
+        // console.log("|");
         return true;
       }
     }
@@ -126,16 +155,16 @@ export function hasOverlaps(level, levelOfBlock, SYMBOL, sizeY, sizeX, topY) {
   return false;
 }
 
-export function arrShift(arr, direction, SYMBOL, sizeX) {
+export function arrShift(arr: TRow, direction: DIRECTION, sizeX: number): TRow {
   let row = [];
   if (arr === undefined || !Array.isArray(arr)) {
     return arr;
   }
 
-  if (direction === "left" || direction === -1) {
+  if (direction === DIRECTION.Left) {
     row = arr.slice(1, sizeX + 1);
     row.push(SYMBOL.empty); // todo: do we need this?
-  } else if (direction === "right" || direction === 1) {
+  } else if (direction === DIRECTION.Right) {
     row = arr.slice(0, sizeX);
     row.unshift(SYMBOL.empty);
   } else {
@@ -146,33 +175,45 @@ export function arrShift(arr, direction, SYMBOL, sizeX) {
 }
 
 // rotates array of arrays left (ccw)
-export function rotateMatrixLeft(matrix) {
-  let rotatedMatrix = [];
-  for (let y = matrix.length - 1; y >= 0; y--) {
-    for (let x = matrix[y].length - 1; x >= 0; x--) {
+export function rotateMatrixLeft(matrix: TBlock): TBlock {
+  if (!matrix || !matrix.length) {
+    return matrix;
+  }
+
+  let rotatedMatrix: TBlock = [];
+  for (let y = matrix?.length - 1; y >= 0; y--) {
+    for (let x = matrix[y]?.length - 1; x >= 0; x--) {
       rotatedMatrix[x] = rotatedMatrix[x] || [];
 
-      if (matrix !== undefined) {
+      if (matrix) {
         const i = matrix[y].length - 1 - x;
         rotatedMatrix[x][y] = matrix[y][i];
       }
     }
   }
+
   return rotatedMatrix;
 }
 
+export type TBlockPosition = {
+  lowestY: number;
+  lowestX: number;
+};
+
 export function getCurrentBlockPos(
-  currentBlock,
-  levelOfBlock,
-  lowestY,
-  lowestX,
-  SYMBOL,
-  sizeY,
-  sizeX,
-  topY
-) {
+  currentBlock: TBlock,
+  levelOfBlock: TLevel,
+  lowestY: number,
+  lowestX: number,
+  sizeY: number,
+  sizeX: number,
+  topY: number,
+): TBlockPosition {
   if (!currentBlock) {
-    return { lowestY: topY, lowestX: Math.round(sizeX / 2) };
+    return {
+      lowestY: topY,
+      lowestX: Math.round(sizeX / 2),
+    };
   }
 
   let lY = lowestY,
@@ -194,16 +235,23 @@ export function getCurrentBlockPos(
     }
   }
 
-  return { lowestY: lY, lowestX: lX };
+  return {
+    lowestY: lY,
+    lowestX: lX,
+  };
 }
 
-export function getFullLines(level, SYMBOL, sizeY, sizeX, topY) {
+export function getFullLines(
+  level: TLevel,
+  sizeY: number,
+  topY: number,
+): number[] {
   if (!level) {
     return [];
   }
 
-  let coords = [];
-  let levelClone = JSON.parse(JSON.stringify(level));
+  const coords = [];
+  const levelClone = clone(level);
 
   for (let y = topY; y <= sizeY; y++) {
     if (!levelClone[y]) {
@@ -212,14 +260,14 @@ export function getFullLines(level, SYMBOL, sizeY, sizeX, topY) {
 
     //remove borders
     if (levelClone[y]) {
-      let row = Array.isArray(levelClone[y])
+      let row: TRow = Array.isArray(levelClone[y])
         ? levelClone[y]
         : levelClone[y].split("");
 
       row.pop();
       row.shift();
 
-      if (row.every((cell) => cell === SYMBOL.full)) {
+      if (row.every((cell: TCell) => cell === SYMBOL.full)) {
         coords.push(y);
       }
     }
@@ -233,13 +281,11 @@ export function getFullLines(level, SYMBOL, sizeY, sizeX, topY) {
 }
 
 export function removeLineFromLevel(
-  level,
-  SYMBOL,
-  linesToDestroy,
-  sizeY,
-  sizeX,
-  topY
-) {
+  level: TLevel,
+  linesToDestroy: number[],
+  sizeY: number,
+  sizeX: number,
+): TLevel {
   if (!level) {
     return level;
   }
