@@ -1,30 +1,26 @@
 <template>
-  <div class="main">
-    <h1>VUETRIS</h1>
-    <div>
-      <span class="score"
-        >Score: {{ score }} | Level:
-        {{ Math.floor(blockN / blocksPerSpeedLevel) + 1 }}</span
-      >
-    </div>
-    <div class="zone">
-      <TBoard :renderData="renderData" :status="status" ref="board" />
-    </div>
+  <div class="scores">
+    <span class="score">Score: {{ score }}</span>
+    <span class="level"
+      >Level: {{ Math.floor(blockN / blocksPerSpeedLevel) + 1 }}</span
+    >
+  </div>
 
-    <div class="buttons">
-      <button class="btn" v-show="!isOn || (!isOn && !isPause)" @click="play()">
-        {{ playBtnText }}
-      </button>
-      <button class="btn" v-show="isOn && isPause" @click="play(true)">
-        {{ resumeBtnText }}
-      </button>
-      <button class="btn" v-show="isOn && !isPause" @click="pauseGame()">
-        {{ pauseBtnText }}
-      </button>
-      <button class="btn" v-show="isOn" @click="stopGame()">
-        {{ stopBtnText }}
-      </button>
-    </div>
+  <div class="main">
+    <TBoard :renderData="renderData" :status="status" ref="board" />
+
+    <TMobileButtons
+      :is-on="isOn"
+      :is-pause="isPause"
+      @play="play"
+      @resume="play(true)"
+      @pause="pauseGame"
+      @stop="stopGame"
+      @left="action(DIRECTION.Left)"
+      @right="action(DIRECTION.Right)"
+      @down="action(DIRECTION.Down)"
+      @rotate="action(DIRECTION.Rotate)"
+    />
   </div>
 </template>
 
@@ -39,10 +35,12 @@ import {
   STATUS,
   SYMBOL,
   TBlock,
+  USER_KEYS,
 } from "@/util/constants.ts";
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { TLevel } from "@/util/interfaces.ts";
-import { clone } from "@/util/helpers.ts";
+import { clone, playSound } from "@/util/helpers.ts";
+import TMobileButtons from "@/components/TMobileButtons.vue";
 
 const blocksPerSpeedLevel = 15;
 const msPerSpeedLevel = 50;
@@ -53,11 +51,6 @@ let speed = speedMin;
 const sizeX = 10;
 const sizeY = 20;
 const topY = 0;
-
-const playBtnText = "Play";
-const pauseBtnText = "Pause";
-const resumeBtnText = "Resume";
-const stopBtnText = "Stop";
 
 const isOn = ref(false);
 const isPause = ref(false);
@@ -95,6 +88,12 @@ watch(
   },
 );
 
+const init = () => {
+  level = fn.createEmptyLevel(sizeX, sizeY, topY);
+  levelOfBlock = fn.createEmptyLevel(sizeX, sizeY, topY);
+  renderView();
+};
+
 const play = (resume = false) => {
   isOn.value = true;
 
@@ -107,7 +106,6 @@ const play = (resume = false) => {
 
   if (!resume && isPause.value === true) {
     clearInterval(timer);
-    console.log("Game paused");
     return;
   }
 
@@ -116,8 +114,6 @@ const play = (resume = false) => {
   }
 
   status.value = STATUS.Play;
-
-  console.log("Game is on!");
 
   timer = setInterval(() => {
     if (frame === 0) {
@@ -143,7 +139,6 @@ const pauseGame = () => {
   isPause.value = true;
   clearInterval(timer);
   status.value = STATUS.Pause;
-  console.log("GAME PAUSED", isPause.value, isOn.value); // todo: add html
 };
 
 // kills interval, etc.
@@ -153,6 +148,7 @@ const stopGame = () => {
   clearInterval(timer);
 
   isOn.value = false;
+  isPause.value = false;
   frame = 0;
   blockN.value = 0;
   speed = speedMin;
@@ -162,8 +158,6 @@ const stopGame = () => {
   currentBlock = null;
   currentBlockData = null;
   // renderView();
-
-  console.log("Game Stoped"); // todo: add html
 };
 
 const renderView = () => {
@@ -229,11 +223,10 @@ const runTick = () => {
 
     status.value = STATUS.NewBlock;
 
-    //console.log('New Block of type: ' + randomBlock.name, randomBlock.data)
-
     if (fn.hasOverlaps(level, levelOfBlock, sizeY, sizeX, topY)) {
       //gameover coz we have overlaps on top
       stopGame();
+      playSound("gameover");
     }
   }
 
@@ -271,6 +264,8 @@ const moveCurrentBlockDown = () => {
 
     status.value = STATUS.Collision;
 
+    playSound("fall");
+
     return false;
   }
 
@@ -306,6 +301,8 @@ const maybeDestroyLines = () => {
 
   score.value += calcScore(linesToDestroy.length);
   status.value = STATUS.Score;
+
+  playSound("explosion");
 
   return true;
 };
@@ -348,7 +345,8 @@ const moveBlock = (direction: DIRECTION) => {
 
 // user
 const rotateBlock = (blockData: TBlock) => {
-  // TODO: add direction?
+  // TODO: mb add debounce to avoid 'climbing up'
+
   if (blockData === undefined) {
     return false;
   }
@@ -398,33 +396,59 @@ const rotateBlock = (blockData: TBlock) => {
   return true;
 };
 
-const userKeyDown = (e) => {
-  // console.log(e)
-  if (level === null || levelOfBlock === null) {
-    return;
-  }
-
+const action = (action: DIRECTION) => {
+  playSound("move");
   let r = false;
 
-  if (e.code === "ArrowRight") {
+  if (action === DIRECTION.Right) {
     r = moveBlock(DIRECTION.Right);
     if (r) renderView();
-  } else if (e.code === "ArrowLeft") {
+  } else if (action === DIRECTION.Left) {
     r = moveBlock(DIRECTION.Left);
     if (r) renderView();
-  } else if (e.code === "ArrowUp" && allowRotation) {
-    // e.code === 'Space'
+  } else if (action === DIRECTION.Rotate && allowRotation) {
+    // action === 'Space'
     r = rotateBlock(currentBlockData || BLOCKS[currentBlock]);
     if (r) renderView();
     // TODO: 1 bug - when rotating too often block gets up
     // TODO: 2 bug - extra line blinks below horiz border
-  } else if (e.code === "ArrowDown") {
+  } else if (action === DIRECTION.Down) {
     for (let times = 1; times <= 3; times++) {
       // TODO: maybe optimize
       r = moveCurrentBlockDown();
       if (r) renderView();
     }
-  } else if (e.code === "Space") {
+  }
+};
+
+const userKeyDown = (e) => {
+  if (level === null || levelOfBlock === null) {
+    return;
+  }
+
+  playSound("move");
+
+  let r = false;
+
+  if (e.code === USER_KEYS.ArrowRight) {
+    r = moveBlock(DIRECTION.Right);
+    if (r) renderView();
+  } else if (e.code === USER_KEYS.ArrowLeft) {
+    r = moveBlock(DIRECTION.Left);
+    if (r) renderView();
+  } else if (e.code === USER_KEYS.ArrowUp && allowRotation) {
+    // e.code === 'Space'
+    r = rotateBlock(currentBlockData || BLOCKS[currentBlock]);
+    if (r) renderView();
+    // TODO: 1 bug - when rotating too often block gets up
+    // TODO: 2 bug - extra line blinks below horiz border
+  } else if (e.code === USER_KEYS.ArrowDown) {
+    for (let times = 1; times <= 3; times++) {
+      // TODO: maybe optimize
+      r = moveCurrentBlockDown();
+      if (r) renderView();
+    }
+  } else if (e.code === USER_KEYS.Space) {
     for (let times = 1; times <= sizeY; times++) {
       // TODO: maybe optimize
       r = moveCurrentBlockDown();
@@ -434,9 +458,8 @@ const userKeyDown = (e) => {
 };
 
 onMounted(() => {
-  console.log("mounted");
-  console.clear();
   document.addEventListener("keydown", userKeyDown);
+  init();
 });
 
 onUnmounted(() => {
@@ -445,6 +468,17 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.scores {
+  display: flex;
+  column-gap: 40px;
+  justify-content: center;
+
+  span {
+    font-size: 1.2rem;
+    font-weight: 600;
+  }
+}
+
 .main {
   display: flex;
   flex-direction: column;
@@ -455,23 +489,5 @@ onUnmounted(() => {
   min-width: 210px;
   min-height: 400px;
   padding: 0;
-}
-
-.score {
-  font-size: 1.2rem;
-}
-
-.buttons {
-  display: flex;
-}
-
-.btn {
-  background-color: orange;
-  border: 2px solid black;
-  padding: 5px 20px;
-  margin: 10px;
-  font-size: 1rem;
-  font-weight: 600;
-  min-width: 110px;
 }
 </style>

@@ -69,16 +69,7 @@ const randomColor = () =>
 
 <style scoped>
 .board {
-  margin: 0;
-
-  margin-left: -5px;
-  margin-top: -5px;
-
-  font-family: monospace;
-  font-size: 28px;
-  position: absolute;
   display: flex;
-
   flex-direction: column;
 }
 
@@ -97,9 +88,9 @@ const randomColor = () =>
 }
 
 .cell {
-  width: 12px;
-  height: 12px;
-  border: 1px solid black;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.5);
   margin: 2px;
   display: block;
   background-color: transparent;

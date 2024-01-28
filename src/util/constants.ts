@@ -32,6 +32,16 @@ export enum DIRECTION {
   Right = "right",
   Down = "down",
   Up = "up",
+  Rotate = "rotate",
+  Drop = "drop",
+}
+
+export enum USER_KEYS {
+  ArrowRight = "ArrowRight",
+  ArrowLeft = "ArrowLeft",
+  ArrowUp = "ArrowUp",
+  ArrowDown = "ArrowDown",
+  Space = "Space",
 }
 
 export enum BLOCKS_NAMES {
