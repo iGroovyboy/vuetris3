@@ -2,7 +2,10 @@
   <div class="main">
     <h1>VUETRIS</h1>
     <div>
-      <span class="score">Score: {{ score }}</span>
+      <span class="score"
+        >Score: {{ score }} | Level:
+        {{ Math.floor(blockN / blocksPerSpeedLevel) + 1 }}</span
+      >
     </div>
     <div class="zone">
       <TBoard :renderData="renderData" :status="status" ref="board" />
@@ -29,22 +32,28 @@
 import TBoard from "./TBoard.vue";
 import * as fn from "@/util/lib.ts";
 import {
-  SYMBOL,
   BLOCKS,
-  STATUS,
+  BLOCKS_NAMES,
   DIRECTION,
   SCORE_MAP,
+  STATUS,
+  SYMBOL,
   TBlock,
-  BLOCKS_NAMES,
 } from "@/util/constants.ts";
-import { onMounted, onUnmounted, ref } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { TLevel } from "@/util/interfaces.ts";
 import { clone } from "@/util/helpers.ts";
 
-const speed = 500;
+const blocksPerSpeedLevel = 15;
+const msPerSpeedLevel = 50;
+
+const speedMin = 500;
+let speed = speedMin;
+
 const sizeX = 10;
 const sizeY = 20;
 const topY = 0;
+
 const playBtnText = "Play";
 const pauseBtnText = "Pause";
 const resumeBtnText = "Resume";
@@ -59,6 +68,7 @@ const status = ref<STATUS>("stop");
 
 const destroyed = ref(0);
 const score = ref(0);
+const blockN = ref(0);
 
 const isAnimation = ref(false);
 
@@ -69,6 +79,21 @@ let currentBlockData: TBlock | null = null;
 let allowRotation = true;
 let level: TLevel = null;
 let levelOfBlock: TLevel = [];
+
+watch(
+  () => blockN.value,
+  () => {
+    if (
+      status.value === STATUS.Play &&
+      blockN.value % blocksPerSpeedLevel === 0 &&
+      speed > 50
+    ) {
+      speed -= msPerSpeedLevel;
+      clearInterval(timer);
+      play(true);
+    }
+  },
+);
 
 const play = (resume = false) => {
   isOn.value = true;
@@ -126,10 +151,11 @@ const stopGame = () => {
   status.value = STATUS.Stop;
 
   clearInterval(timer);
-  timer = null;
 
   isOn.value = false;
   frame = 0;
+  blockN.value = 0;
+  speed = speedMin;
 
   level = fn.createEmptyLevel(sizeX, sizeY, topY);
   levelOfBlock = [];
@@ -187,6 +213,7 @@ const renderView = () => {
 
 const runTick = () => {
   if (!currentBlock) {
+    blockN.value++;
     const randomBlock = fn.pickRandomBlock(BLOCKS);
 
     levelOfBlock = fn.createEmptyLevel(sizeX, sizeY, topY);
