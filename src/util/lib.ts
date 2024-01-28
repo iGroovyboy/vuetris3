@@ -1,4 +1,10 @@
-import { DIRECTION, SYMBOL, TBlock, TBlocks } from "./constants.ts";
+import {
+  BLOCKS_NAMES,
+  DIRECTION,
+  SYMBOL,
+  TBlock,
+  TBlocks,
+} from "./constants.ts";
 import { TCell, TLevel, TRow } from "./interfaces.ts";
 import { clone } from "./helpers.ts";
 
@@ -201,7 +207,7 @@ export type TBlockPosition = {
 };
 
 export function getCurrentBlockPos(
-  currentBlock: TBlock,
+  currentBlock: BLOCKS_NAMES | null,
   levelOfBlock: TLevel,
   lowestY: number,
   lowestX: number,
@@ -283,7 +289,6 @@ export function getFullLines(
 export function removeLineFromLevel(
   level: TLevel,
   linesToDestroy: number[],
-  sizeY: number,
   sizeX: number,
 ): TLevel {
   if (!level) {

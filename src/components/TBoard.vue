@@ -1,7 +1,7 @@
 <template>
   <div :class="['board', statusClass]">
     <template v-for="(row, id) in renderData" :key="id">
-      <div class="row" v-if="row.length > 0">
+      <div class="row" :class="'c-' + id" v-if="row.length > 0">
         <span
           class="cell"
           :class="cellClass(cell)"
@@ -15,18 +15,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
-import { STATUS, SYMBOL } from "@/util/constants.ts";
-import { TCell, TLevel } from "@/util/interfaces.ts";
+import { PropType, ref, watch } from "vue";
+import { STATUS, SYMBOL } from "../util/constants.ts";
+import { TCell, TLevel } from "../util/interfaces.ts";
 
-interface TBoardProps {
-  renderData: TLevel;
-  status: STATUS;
-}
-
-const props = withDefaults(defineProps<TBoardProps>(), {
-  renderData: [],
-  status: STATUS.Stop,
+const props = defineProps({
+  renderData: {
+    type: Object as PropType<TLevel>,
+    required: true,
+  },
+  status: {
+    type: Object as PropType<STATUS>,
+    default: STATUS.Stop,
+  },
 });
 
 let blockColor = "green";

@@ -5,9 +5,9 @@
 </template>
 
 <script setup lang="ts">
-import TIcon from "@/components/TIcon.vue";
+import TIcon from "./TIcon.vue";
 
-const props = defineProps({
+defineProps({
   icon: {
     type: String,
     required: true,

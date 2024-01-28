@@ -18,9 +18,9 @@
   </div>
 </template>
 <script setup lang="ts">
-import TBtn from "@/components/TBtn.vue";
+import TBtn from "./TBtn.vue";
 import { computed } from "vue";
-import { DIRECTION } from "@/util/constants.ts";
+import { DIRECTION } from "../util/constants.ts";
 
 const props = defineProps({
   isOn: Boolean,

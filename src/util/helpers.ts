@@ -7,7 +7,7 @@ export const clone = (obj: unknown) => JSON.parse(JSON.stringify(obj));
 
 // play wav audio file from assets folder
 export const playSound = async (sound: string) => {
-  const soundsMap = {
+  const soundsMap: Record<string, string | undefined> = {
     move: SoundMove,
     explosion: SoundExplosion,
     fall: SoundFall,

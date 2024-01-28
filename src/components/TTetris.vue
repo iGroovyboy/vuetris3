@@ -26,7 +26,8 @@
 
 <script setup lang="ts">
 import TBoard from "./TBoard.vue";
-import * as fn from "@/util/lib.ts";
+import * as fn from "../util/lib.ts";
+import { TRandomBlockData } from "../util/lib.ts";
 import {
   BLOCKS,
   BLOCKS_NAMES,
@@ -36,11 +37,11 @@ import {
   SYMBOL,
   TBlock,
   USER_KEYS,
-} from "@/util/constants.ts";
+} from "../util/constants.ts";
 import { onMounted, onUnmounted, ref, watch } from "vue";
-import { TLevel } from "@/util/interfaces.ts";
-import { clone, playSound } from "@/util/helpers.ts";
-import TMobileButtons from "@/components/TMobileButtons.vue";
+import { TLevel, TRow } from "../util/interfaces.ts";
+import { clone, playSound } from "../util/helpers.ts";
+import TMobileButtons from "./TMobileButtons.vue";
 
 const blocksPerSpeedLevel = 15;
 const msPerSpeedLevel = 50;
@@ -56,8 +57,8 @@ const isOn = ref(false);
 const isPause = ref(false);
 
 const renderData = ref<TLevel>([]);
-const renderTxt = ref<TLevel>("");
-const status = ref<STATUS>("stop");
+const renderTxt = ref<TLevel | string>("");
+const status = ref<STATUS>(STATUS.Stop);
 
 const destroyed = ref(0);
 const score = ref(0);
@@ -70,7 +71,7 @@ let frame: number = 0;
 let currentBlock: BLOCKS_NAMES | null = null;
 let currentBlockData: TBlock | null = null;
 let allowRotation = true;
-let level: TLevel = null;
+let level: TLevel;
 let levelOfBlock: TLevel = [];
 
 watch(
@@ -82,7 +83,7 @@ watch(
       speed > 50
     ) {
       speed -= msPerSpeedLevel;
-      clearInterval(timer);
+      if (timer) clearInterval(timer);
       play(true);
     }
   },
@@ -104,7 +105,7 @@ const play = (resume = false) => {
   //  return;
   //}
 
-  if (!resume && isPause.value === true) {
+  if (!resume && isPause.value === true && timer) {
     clearInterval(timer);
     return;
   }
@@ -128,7 +129,7 @@ const play = (resume = false) => {
 
     frame++;
 
-    if (isOn.value === false) {
+    if (isOn.value === false && timer) {
       clearInterval(timer);
     }
   }, speed);
@@ -137,7 +138,7 @@ const play = (resume = false) => {
 // kills interval, etc.
 const pauseGame = () => {
   isPause.value = true;
-  clearInterval(timer);
+  if (timer) clearInterval(timer);
   status.value = STATUS.Pause;
 };
 
@@ -145,7 +146,7 @@ const pauseGame = () => {
 const stopGame = () => {
   status.value = STATUS.Stop;
 
-  clearInterval(timer);
+  if (timer) clearInterval(timer);
 
   isOn.value = false;
   isPause.value = false;
@@ -162,7 +163,7 @@ const stopGame = () => {
 
 const renderView = () => {
   let levelTxt = "",
-    levelArray = [];
+    levelArray: TLevel = [];
 
   for (let Y = topY; Y <= sizeY; Y++) {
     levelArray[Y] = [];
@@ -208,7 +209,7 @@ const renderView = () => {
 const runTick = () => {
   if (!currentBlock) {
     blockN.value++;
-    const randomBlock = fn.pickRandomBlock(BLOCKS);
+    const randomBlock: TRandomBlockData = fn.pickRandomBlock(BLOCKS);
 
     levelOfBlock = fn.createEmptyLevel(sizeX, sizeY, topY);
     levelOfBlock = fn.addNewBlockToLOB(
@@ -218,7 +219,7 @@ const runTick = () => {
       topY,
     );
 
-    currentBlock = randomBlock.name;
+    currentBlock = randomBlock.name as BLOCKS_NAMES;
     currentBlockData = randomBlock.data;
 
     status.value = STATUS.NewBlock;
@@ -253,7 +254,7 @@ const moveCurrentBlockDown = () => {
   let levelOfBlockShifted = clone(levelOfBlock); //[...levelOfBlock];
   levelOfBlockShifted.pop();
   levelOfBlockShifted.unshift(emptyRow);
-  levelOfBlockShifted = levelOfBlockShifted.filter((el) => el != null);
+  levelOfBlockShifted = levelOfBlockShifted.filter((el: TRow) => el != null);
 
   if (fn.hasOverlaps(level, levelOfBlockShifted, sizeY, sizeX, topY)) {
     level = fn.transferBlockToLevel(level, levelOfBlock, sizeY, sizeX, topY);
@@ -292,7 +293,7 @@ const maybeDestroyLines = () => {
 
   isAnimation.value = true;
 
-  level = fn.removeLineFromLevel(level, linesToDestroy, sizeY, sizeX);
+  level = fn.removeLineFromLevel(level, linesToDestroy, sizeX);
 
   isAnimation.value = false;
 
@@ -407,8 +408,7 @@ const action = (action: DIRECTION) => {
     r = moveBlock(DIRECTION.Left);
     if (r) renderView();
   } else if (action === DIRECTION.Rotate && allowRotation) {
-    // action === 'Space'
-    r = rotateBlock(currentBlockData || BLOCKS[currentBlock]);
+    r = rotateBlock(currentBlockData || BLOCKS[currentBlock || BLOCKS_NAMES.I]);
     if (r) renderView();
     // TODO: 1 bug - when rotating too often block gets up
     // TODO: 2 bug - extra line blinks below horiz border
@@ -421,7 +421,7 @@ const action = (action: DIRECTION) => {
   }
 };
 
-const userKeyDown = (e) => {
+const userKeyDown = (e: KeyboardEvent) => {
   if (level === null || levelOfBlock === null) {
     return;
   }
@@ -438,7 +438,7 @@ const userKeyDown = (e) => {
     if (r) renderView();
   } else if (e.code === USER_KEYS.ArrowUp && allowRotation) {
     // e.code === 'Space'
-    r = rotateBlock(currentBlockData || BLOCKS[currentBlock]);
+    r = rotateBlock(currentBlockData || BLOCKS[currentBlock || BLOCKS_NAMES.I]);
     if (r) renderView();
     // TODO: 1 bug - when rotating too often block gets up
     // TODO: 2 bug - extra line blinks below horiz border

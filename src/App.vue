@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import TTetris from '@/components/TTetris.vue'
+import TTetris from "./components/TTetris.vue";
 </script>
 
 <style scoped>
