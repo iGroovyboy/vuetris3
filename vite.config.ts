@@ -1,6 +1,9 @@
 import { fileURLToPath, URL } from "url";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
+import dotenv from "dotenv";
+
+const env = dotenv.config().parsed;
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -13,4 +16,5 @@ export default defineConfig({
       },
     ],
   },
+  base: env.VITE_BASE_URL,
 });
